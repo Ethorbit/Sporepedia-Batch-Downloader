@@ -4,7 +4,7 @@
 // @include /^https?:\/\/.*\.spore\.com\/sporepedia.*$/
 // @grant GM_download
 // @inject-into auto
-// @version 0.1.0
+// @version 0.2.0
 // @licence CC0
 // ==/UserScript==
 
@@ -35,6 +35,25 @@ function applyEvent (element, eventName)
 {
 	element[eventName].apply(element);
 }
+
+function sleep (forMilliseconds)
+{
+	return new Promise(functionToExecute => setTimeout(functionToExecute, forMilliseconds));
+}
+
+function splitPath (path)
+{
+	return path.split(/[/\\]/);
+}
+
+function isImageLoaded (assetThumbnail)
+{
+	const url = AssetThumbnailsPanel.getAssetThumbnailImage(assetThumbnail).src;
+	const urlSegments = splitPath(url);
+	const filename = urlSegments[urlSegments.length - 1];
+	return filename !== 'blank.gif';
+}
+
 
 /* If the SPOREcast functionality seems weirdly implemented, that's because
 it is. I only realised that I needed to implement it after finishing the
@@ -117,24 +136,56 @@ class AssetThumbnailsPanel
 		return this.movePage(pageButton);
 	}
 
-	get assetThumbnails ()
+	async getAssetThumbnails (initialPageLoadSleepDuration = 600)
 	{
 		const thumbnailPanel =
 			this.sporecastPanelIsActive ?
 			this.sporecastPanel :
 			this.assetThumbnailsPanel;
 
-		return Array.prototype.filter.call(
-			thumbnailPanel.querySelectorAll('*.js-asset-view'),
-			(thumbnail) => /^asset-thumbnail-[0-9]+-[0-9]+$/.test(thumbnail.id)
-		);
+		let thumbnails = null;
+		let visibleThumbnails = null;
+
+		/* Sleeping to wait for the page to load is the simplest way to avoid
+		wacky results. Such as returning too many URLs, and having duplicate
+		URLSs, not getting all unique URLs. */
+
+		await sleep(initialPageLoadSleepDuration);
+
+		do
+		{
+			await sleep(15);
+
+			thumbnails = Array.prototype.filter.call(
+				thumbnailPanel.querySelectorAll('*.js-asset-view'),
+				(thumbnail) => /^asset-thumbnail-[0-9]+-[0-9]+$/.test(thumbnail.id)
+			);
+
+			visibleThumbnails =
+				thumbnails.filter((thumb) => !isElementHidden(thumb));
+		}
+		while (
+			visibleThumbnails.length === 0 ||
+			visibleThumbnails.filter((thumb) => !isImageLoaded(thumb)).length != 0
+		)
+		/* If there are no visible thumbnails, then the we've only just
+		navigated to the page, so we still need to wait for the page to
+		load, no valid page should have zero visible thumbnails, so we
+		should be safe to infinitely sleep. */
+
+		return visibleThumbnails;
+	}
+
+	static getAssetThumbnailImage (assetThumbnailElement)
+	{
+		return assetThumbnailElement.querySelector('img.js-asset-thumbnail');
 	}
 
 	static getAssetThumbnailImages (assetThumbnailElements)
 	{
 		return Array.prototype.map.call(
 			assetThumbnailElements,
-			(thumbnail) => thumbnail.querySelector('img.js-asset-thumbnail')
+			(thumbnail) => AssetThumbnailsPanel.getAssetThumbnailImage(thumbnail)
 		);
 	}
 }
@@ -149,6 +200,7 @@ class UserControls
 	containerNode;
 	assetThumbnailsPanel;
 	applyTo;
+	initialPageLoadSleepDuration;
 	operationGetImageUrlsButton;
 	operationDownloadImages;
 	outputTextArea;
@@ -178,6 +230,9 @@ class UserControls
 					<option value="allPreviousPages">Current and All Previous Pages</option>
 				</select>
 
+				<label for="duc-initial-page-load-delay">Initial Page Load Sleep Duration (Milliseconds)</label>
+				<input id="duc-initial-page-load-delay" value="600" min="1" max="300000" step="1" type="number"></input>
+
 				<button id="duc-operation-get-image-urls" type="button">Get User Creation Image URLs</button>
 				<button id="duc-operation-download-images" type="button">Download User Creation Image Files</button>
 
@@ -192,11 +247,17 @@ class UserControls
 		this.operationDownloadImages = document.getElementById('duc-operation-download-images');
 		this.outputTextArea = document.getElementById('duc-output-textarea');
 		this.applyTo = document.getElementById('duc-apply-to');
+		this.initialPageLoadSleepDuration = document.getElementById('duc-initial-page-load-delay');
 	}
 
 	clearOutput ()
 	{
 		this.outputTextArea.textContent = '';
+	}
+
+	parseinitialPageLoadSleepDuration ()
+	{
+		return parseInt(this.initialPageLoadSleepDuration.value);
 	}
 }
 
@@ -216,7 +277,7 @@ function lookupKeyWithFallback (objectToLookup, key, fallback)
 /* The abstractions started to leak around here and I couldn't be bothered to
 mop them up. Sorry. */
 
-function invokeOperation (userControls, operationCallback)
+async function invokeOperation (userControls, operationCallback)
 {
 	userControls.clearOutput();
 
@@ -241,14 +302,9 @@ function invokeOperation (userControls, operationCallback)
 
 	do
 	{
-		operationCallback(userControls);
+		await operationCallback(userControls);
 	}
 	while(loopPredicate())
-}
-
-function splitPath (path)
-{
-	return path.split(/[/\\]/);
 }
 
 function getImageURLs (assetThumbnails)
@@ -257,17 +313,21 @@ function getImageURLs (assetThumbnails)
 		map((img) => img.src);
 }
 
-function getImageURLsCallback (userControls)
+async function getImageURLsCallback (userControls)
 {
-	const thumbnails = userControls.assetThumbnailsPanel.assetThumbnails;
+	const thumbnails = await userControls.assetThumbnailsPanel.getAssetThumbnails(
+		userControls.parseinitialPageLoadSleepDuration()
+	);
 	const urls = getImageURLs(thumbnails);
 
 	userControls.outputTextArea.textContent += urls.join('\n') + '\n';
 }
 
-function downloadImagesCallback (userControls)
+async function downloadImagesCallback (userControls)
 {
-	const thumbnails = userControls.assetThumbnailsPanel.assetThumbnails;
+	const thumbnails = await userControls.assetThumbnailsPanel.getAssetThumbnails(
+		userControls.parseinitialPageLoadSleepDuration()
+	);
 	const urls = getImageURLs(thumbnails);
 
 	if (typeof GM_download == 'undefined')
@@ -285,24 +345,24 @@ function downloadImagesCallback (userControls)
 	}
 }
 
-function main ()
+async function main ()
 {
 	const controls = new UserControls();
 	controls.inject();
 
 	controls.operationGetImageUrlsButton.addEventListener(
 		'click',
-		function ()
+		async function ()
 		{
-			invokeOperation(controls, getImageURLsCallback);
+			await invokeOperation(controls, getImageURLsCallback);
 		}
 	);
 
 	controls.operationDownloadImages.addEventListener(
 		'click',
-		function ()
+		async function ()
 		{
-			invokeOperation(controls, downloadImagesCallback);
+			await invokeOperation(controls, downloadImagesCallback);
 		}
 	);
 }
