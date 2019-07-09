@@ -136,7 +136,7 @@ class AssetThumbnailsPanel
 		return this.movePage(pageButton);
 	}
 
-	async getAssetThumbnails (initialPageLoadSleepDuration = 600)
+	async getAssetThumbnails (initialPageLoadSleepDuration = 1000)
 	{
 		const thumbnailPanel =
 			this.sporecastPanelIsActive ?
@@ -231,7 +231,7 @@ class UserControls
 				</select>
 
 				<label for="duc-initial-page-load-delay">Initial Page Load Sleep Duration (Milliseconds)</label>
-				<input id="duc-initial-page-load-delay" value="600" min="1" max="300000" step="1" type="number"></input>
+				<input id="duc-initial-page-load-delay" value="1000" min="1" max="300000" step="1" type="number"></input>
 
 				<button id="duc-operation-get-image-urls" type="button">Get User Creation Image URLs</button>
 				<button id="duc-operation-download-images" type="button">Download User Creation Image Files</button>
