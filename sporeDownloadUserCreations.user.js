@@ -99,41 +99,59 @@ class AssetThumbnailsPanel
 			this.sporecastPanel.querySelector('*.js-pagination-back'),
 			'Could not find previous-page button.'
 		);
+
+        this.iteratedPages = 0;
 	}
 
-	movePage (pageButton)
+	movePage (pageButton, maxAllowed)
 	{
-		const pageCanBeAdvanced = !isElementHidden(pageButton);
+		const pageCanBeAdvanced = (!isElementHidden(pageButton) && this.pagesDownloaded < maxAllowed);
 		if (pageCanBeAdvanced)
 		{
+            this.pagesDownloaded += 1;
 			applyEvent(pageButton, 'click');
 		}
+        else
+        {
+            this.pagesDownloaded = 0;
+        }
+
 		return pageCanBeAdvanced;
 	}
+
+    get pagesDownloaded()
+    {
+        return this.iteratedPages;
+    }
+
+    set pagesDownloaded(num)
+    {
+       this.iteratedPages = num;
+    }
 
 	get sporecastPanelIsActive ()
 	{
 		return !isElementHidden(this.sporecastPanel);
 	}
 
-	moveToPreviousPage ()
+	moveToPreviousPage (maxAllowed)
 	{
 		const pageButton =
 			this.sporecastPanelIsActive ?
 			this.sporecastPreviousPageButton :
 			this.previousPageButton;
 
-		return this.movePage(pageButton);
+		return this.movePage(pageButton, maxAllowed);
 	}
 
-	moveToNextPage ()
+	moveToNextPage (maxAllowed)
 	{
 		const pageButton =
 			this.sporecastPanelIsActive ?
 			this.sporecastNextPageButton :
 			this.nextPageButton;
 
-		return this.movePage(pageButton);
+		return this.movePage(pageButton, maxAllowed);
 	}
 
 	async getAssetThumbnails (initialPageLoadSleepDuration = 1000)
@@ -221,21 +239,20 @@ class UserControls
 		`
 			<section id="duc-injected-controls">
 				<header><h2>Download User Creations</h2></header>
-
 				<label for="duc-apply-to">Apply to</label>
 				<select id="duc-apply-to">
-					<option value="currentPage" selected="selected">Current Page</option>
+					<option value="currentPage">Current Page</option>
 					<option value="allPages">All Pages</option>
-					<option value="allFollowingPages">Current and All Following Pages</option>
+					<option value="allFollowingPages" selected="selected">Current and All Following Pages</option>
 					<option value="allPreviousPages">Current and All Previous Pages</option>
 				</select>
-
+				<label for="duc-max-pages">Number of Pages</label>
+				<input id="duc-max-pages" value="20" min="1" max="300000" step="1" type="number"></input>
+                <br>
 				<label for="duc-initial-page-load-delay">Initial Page Load Sleep Duration (Milliseconds)</label>
 				<input id="duc-initial-page-load-delay" value="1000" min="1" max="300000" step="1" type="number"></input>
-
 				<button id="duc-operation-get-image-urls" type="button">Get User Creation Image URLs</button>
 				<button id="duc-operation-download-images" type="button">Download User Creation Image Files</button>
-
 				<div id="duc-output-area">
 					<textarea id="duc-output-textarea" readonly="readonly"></textarea>
 				</div>
@@ -248,6 +265,7 @@ class UserControls
 		this.outputTextArea = document.getElementById('duc-output-textarea');
 		this.applyTo = document.getElementById('duc-apply-to');
 		this.initialPageLoadSleepDuration = document.getElementById('duc-initial-page-load-delay');
+        this.pageNumToDownload = document.getElementById('duc-max-pages');
 	}
 
 	clearOutput ()
@@ -259,6 +277,11 @@ class UserControls
 	{
 		return parseInt(this.initialPageLoadSleepDuration.value);
 	}
+
+    parsePageDownloadCount()
+    {
+        return parseInt(this.pageNumToDownload.value);
+    }
 }
 
 function lookupKeyWithFallback (objectToLookup, key, fallback)
@@ -291,10 +314,11 @@ async function invokeOperation (userControls, operationCallback)
 		currentApplyTo = 'allFollowingPages';
 	}
 
+    const maxPages = userControls.parsePageDownloadCount();
 	const loopPredicate = lookupKeyWithFallback(
 		{
-			'allFollowingPages': function () {return assetThumbnailsPanel.moveToNextPage();},
-			'allPreviousPages': function () {return assetThumbnailsPanel.moveToPreviousPage();}
+			'allFollowingPages': function () {return assetThumbnailsPanel.moveToNextPage(maxPages);},
+			'allPreviousPages': function () {return assetThumbnailsPanel.moveToPreviousPage(maxPages);}
 		},
 		currentApplyTo,
 		function () {return false;}
