@@ -18,5 +18,4 @@ and then import the UserScript into it.
 
 * Download with desired settings. 
 
-* Go to where your browser downloads files 
-* Drag all the images onto Spore
+* Drag all the downloaded files onto the Spore window
