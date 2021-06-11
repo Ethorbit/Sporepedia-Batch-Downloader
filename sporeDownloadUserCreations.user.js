@@ -237,7 +237,7 @@ class UserControls
 	{
 		const htmlToInject =
 		`
-			<section id="duc-injected-controls">
+			<section id="duc-injected-controls" style="margin:5px;">
 				<header><h2>Download User Creations</h2></header>
 				<label for="duc-apply-to">Apply to</label>
 				<select id="duc-apply-to">
