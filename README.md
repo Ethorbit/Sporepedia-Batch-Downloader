@@ -8,3 +8,15 @@ and then import the UserScript into it.
 
 
 [![Video Tutorial](https://i.imgur.com/MMRmVh7.png)](https://www.youtube.com/watch?v=RpjvLpyiras)
+
+## Usage 
+* Set Spore to Windowed Mode (disable Fullscreen in Video Settings)
+
+* Go to [Sporepedia](https://www.spore.com/sporepedia) and filter the search to what you plan to download
+* On the top left you should see an injected control panel 
+* ![example](https://i.imgur.com/ZYNFeNd.png)
+
+* Download with desired settings. 
+
+* Go to where your browser downloads files 
+* Drag all the images onto Spore
