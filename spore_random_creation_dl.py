@@ -65,17 +65,45 @@ def download_batch():
     
     # Extract keys and values from the API's DWR response and assemble it into an easily parseable array:
     dwr_response_segments = response.text.split(';')
-    dwr_data = {}
-    for i in range(0, len(dwr_response_segments), 2):
+    dwr_data              = {}
+    dwr_last_element_data = {}
+    dwr_last_element_id   = None
+    for i in range(0, len(dwr_response_segments), 1):
         key_value_pairs = dwr_response_segments[i].split('=')
         if (len(key_value_pairs) >= 2):
-            key = re.sub('([a-z][0-9]*\.)', '', key_value_pairs[0])
+            key   = key_value_pairs[0]
             value = key_value_pairs[1]
-            dwr_data[key] = value
-            
-    # Print information and attempt to download thumbnail (AKA creation)
-    if (len(dwr_data) >= 1):
-        print(dwr_data['name'])
+            element_id_match = re.search('([a-z][0-9]*\.)', key)
+            if (element_id_match):
+                element_id = element_id_match.group()
+                key = key.replace(element_id_match.group(), '')
+                
+                # Check if we've iterated to a new item and act accordingly
+                if (element_id != dwr_last_element_id):
+                    if ('id' in dwr_last_element_data):
+                        dwr_data[dwr_last_element_data['id']] = dwr_last_element_data
+                    
+                    dwr_last_element_id = element_id
+                    dwr_last_element_data = {}
+                else:
+                    dwr_last_element_data[key] = value
+   
+    # Print and download each creation:
+    for id, data in dwr_data.items():
+        # Format avatarImage into a valid downloadable image
+        if ('avatarImage' in data):
+            image_pattern = re.compile(r'(thumb)')
+            image_match = image_pattern.search(data['avatarImage'])
+            if (image_match):
+                image = data['avatarImage'].replace(image_match.group(), '').replace('\\', '').replace('\"', '')
+                image_extension_match = re.search(r'(\.[A-z]*)$', image)
+                if (image_extension_match):
+                    image_extension = image_extension_match.group()
+                    image = image.replace(image_extension, f'_lrg{image_extension}')
+                    image_url = static_img_url + image
+                    print(image_url)
+
+    #    print("Downloading", creation['name'], "by", creation['screenname'])
         
     # TODO: add check for downloads exceeding args.amount during thumbnail download loop
     # TODO: prevent duplicates by checking if a file with the assetID exists already
