@@ -1,7 +1,8 @@
 #!/bin/python3
 import argparse
-import requests
+import requests, urllib.request
 import re
+import json
 import time
 
 parser = argparse.ArgumentParser(description='Downloads random creations from Sporepedia over and over until you are satisfied.')
@@ -24,10 +25,6 @@ timeout_secs      = 4
 downloads         = 0
 http_session_id   = None
 script_session_id = None
-
-# thumb\/500\/327\/990\/500327990496.png
-# replace thumb and backslashes, prepend with static url, prepend _lrg before extension.
-#def get_thumbnail_from_avatar_image():
 
 def download_batch():
     global cookie_jar
@@ -90,23 +87,23 @@ def download_batch():
    
     # Print and download each creation:
     for id, data in dwr_data.items():
-        # Format avatarImage into a valid downloadable image
         if ('avatarImage' in data):
             image_pattern = re.compile(r'(thumb)')
             image_match = image_pattern.search(data['avatarImage'])
             if (image_match):
+                # Format avatarImage into a valid downloadable image
                 image = data['avatarImage'].replace(image_match.group(), '').replace('\\', '').replace('\"', '')
                 image_extension_match = re.search(r'(\.[A-z]*)$', image)
                 if (image_extension_match):
                     image_extension = image_extension_match.group()
                     image = image.replace(image_extension, f'_lrg{image_extension}')
                     image_url = static_img_url + image
-                    print(image_url)
-
-    #    print("Downloading", creation['name'], "by", creation['screenname'])
-        
+                    print(json.dumps(data, indent=4))
+                    print(f'Downloading from {image_url}')
+                    # TODO: check if this is a valid URL as currently this will pretend to download even if it's invalid
+                    urllib.request.urlretrieve(image_url, f'{args.dir}/{id}{image_extension}')
+    
     # TODO: add check for downloads exceeding args.amount during thumbnail download loop
-    # TODO: prevent duplicates by checking if a file with the assetID exists already
     
     time.sleep(timeout_secs)
     download_batch()
