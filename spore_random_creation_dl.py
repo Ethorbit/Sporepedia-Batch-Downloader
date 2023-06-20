@@ -21,7 +21,7 @@ api_url           = 'http://www.spore.com/jsserv/call/plaincall/assetService.lis
 static_img_url    = 'http://static.spore.com/static/image'
 cookie_jar        = requests.cookies.RequestsCookieJar()
 batch_size        = 20
-timeout_secs      = 4
+timeout_secs      = 2
 downloads         = 0
 http_session_id   = None
 script_session_id = None
@@ -101,8 +101,11 @@ def download_batch():
                     print(json.dumps(data, indent=4))
                     print(f'Downloading from {image_url}')
                     # TODO: check if this is a valid URL as currently this will pretend to download even if it's invalid
-                    urllib.request.urlretrieve(image_url, f'{args.dir}/{id}{image_extension}')
-    
+                    try:
+                        urllib.request.urlretrieve(image_url, f'{args.dir}/{id}{image_extension}')
+                    except Exception as err:
+                        print(f'There was an error downloading that. - {err}')
+                    
     # TODO: add check for downloads exceeding args.amount during thumbnail download loop
     
     time.sleep(timeout_secs)
