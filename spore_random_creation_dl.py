@@ -1,6 +1,7 @@
 #!/bin/python3
+import os
 import argparse
-import requests, urllib.request
+import requests
 import re
 import json
 import time
@@ -10,11 +11,14 @@ parser.add_argument('-d', '--dir', type=str, help='Directory path to where you w
 parser.add_argument('-a', '--amount', type=int, default=10000000, help='Amount of creations to download before stopping.')
 args = parser.parse_args()
 
-# TODO: check if this is actually a valid path..
 if (not isinstance(args.dir, str)):
     print("Please specify the directory you want images to save to (-d)")
     exit()
-    
+else:
+    if (not os.path.exists(args.dir)):
+        print("The specified directory (-d) doesn't exist.")
+        exit()
+
 print(f'Program will stop when interrupted or after {args.amount} random creations have downloaded.')
 
 api_url           = 'http://www.spore.com/jsserv/call/plaincall/assetService.listAssets.dwr'
@@ -26,10 +30,10 @@ downloads         = 0
 http_session_id   = None
 script_session_id = None
 
-def download_batch():
-    global cookie_jar
-    global http_session_id
-    global script_session_id
+while True:
+    #global cookie_jar
+    #global http_session_id
+    #global script_session_id
     
     request_data = {
         'callCount': 1,
@@ -100,18 +104,30 @@ def download_batch():
                         image = image.replace(image_extension, f'_lrg{image_extension}')
                         image_url = static_img_url + image
                         print(json.dumps(data, indent=4))
-                        print(f'Downloading from {image_url}')
-                        # TODO: check if this is a valid URL as currently this will pretend to download even if it's invalid
-                        try:
-                            urllib.request.urlretrieve(image_url, f'{args.dir}/{id}{image_extension}')
-                        except Exception as err:
-                            print(f'There was an error downloading that. - {err}')
+                        print(f'Downloading {image_url}..')
+                        if (downloads >= args.amount):
+                            print(f'Finished downloading {args.amount} creations.')
+                            exit()
+
+                        image_destination = f'{args.dir}/{id}{image_extension}'
+                        if (not os.path.exists(image_destination)):
+                            try:
+                                image_response = requests.get(image_url)
+                                if (image_response.ok):
+                                    with open(image_destination, 'wb') as fd:
+                                        for chunk in image_response.iter_content(chunk_size=128):
+                                            fd.write(chunk)
+                            
+                                downloads += 1
+                                time.sleep(0.5)
+                            except Exception as err:
+                                print(f'There was an error downloading that. - {err}')
+                                time.sleep(0.5)
+                            
+                            #urllib.request.urlretrieve(image_url, f'{args.dir}/{id}{image_extension}')
+                        else:
+                            print('{image_destination} already exists.')
     except Exception as err:
         print(f'Error trying to fetch creations from the Sporepedia API. - {err}')
   
-    # TODO: add check for downloads exceeding args.amount during thumbnail download loop
-    
     time.sleep(timeout_secs)
-    download_batch()
-download_batch()
-
