@@ -22,7 +22,7 @@ else:
 print(f'Program will stop when interrupted or after {args.amount} random creations have downloaded.')
 
 api_url           = 'http://www.spore.com/jsserv/call/plaincall/assetService.listAssets.dwr'
-static_img_url    = 'http://static.spore.com/static/image'
+static_img_url    = 'http://static.spore.com/static/thumb'
 cookie_jar        = requests.cookies.RequestsCookieJar()
 batch_size        = 1000
 timeout_secs      = 5
@@ -97,7 +97,7 @@ while True:
                     image_extension_match = re.search(r'(\.[A-z]*)$', image)
                     if (image_extension_match):
                         image_extension = image_extension_match.group()
-                        image = image.replace(image_extension, f'_lrg{image_extension}')
+                        #image = image.replace(image_extension, f'_lrg{image_extension}')
                         image_url = static_img_url + image
                         print(json.dumps(data, indent=4))
                         print(f'Downloading {image_url}')
