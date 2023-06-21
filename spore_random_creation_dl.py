@@ -24,17 +24,13 @@ print(f'Program will stop when interrupted or after {args.amount} random creatio
 api_url           = 'http://www.spore.com/jsserv/call/plaincall/assetService.listAssets.dwr'
 static_img_url    = 'http://static.spore.com/static/image'
 cookie_jar        = requests.cookies.RequestsCookieJar()
-batch_size        = 20
-timeout_secs      = 2
+batch_size        = 1000
+timeout_secs      = 5
 downloads         = 0
 http_session_id   = None
 script_session_id = None
 
 while True:
-    #global cookie_jar
-    #global http_session_id
-    #global script_session_id
-    
     request_data = {
         'callCount': 1,
         'c0-scriptName': 'assetService',
@@ -104,7 +100,7 @@ while True:
                         image = image.replace(image_extension, f'_lrg{image_extension}')
                         image_url = static_img_url + image
                         print(json.dumps(data, indent=4))
-                        print(f'Downloading {image_url}..')
+                        print(f'Downloading {image_url}')
                         if (downloads >= args.amount):
                             print(f'Finished downloading {args.amount} creations.')
                             exit()
@@ -123,10 +119,8 @@ while True:
                             except Exception as err:
                                 print(f'There was an error downloading that. - {err}')
                                 time.sleep(0.5)
-                            
-                            #urllib.request.urlretrieve(image_url, f'{args.dir}/{id}{image_extension}')
                         else:
-                            print('{image_destination} already exists.')
+                            print(f'{image_destination} already exists.')
     except Exception as err:
         print(f'Error trying to fetch creations from the Sporepedia API. - {err}')
   
